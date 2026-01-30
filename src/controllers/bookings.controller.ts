@@ -161,3 +161,62 @@ export const bookRoomController: RequestHandler = async (req, res) => {
         });
     }
 };
+
+
+export const getMyBookingController: RequestHandler = async(req , res)=>{
+    try {
+        const userId = String(req.userId)
+
+        const user = await prisma.user.findUnique({
+            where: {id: userId}
+        })
+
+        if(!user){
+            return res.status(401).json({
+                "success": false,
+                "data": null,
+                "error": "UNAUTHORIZED"
+            })
+        }
+
+        const bookings = await prisma.booking.findMany({
+            where : {
+                userId: userId,
+                status: "confirmed"
+            },
+            select :{
+                id: true,
+                roomId: true,
+                hotelId: true,
+                checkInDate: true,
+                checkOutDate: true,
+                guests: true,
+                totalPrice: true,
+                bookingDate: true,
+                hotel: {
+                    select :{
+                        name: true
+                    }
+                },
+                room:{
+                    select: {
+                        roomNumber: true,
+                        roomType: true
+                    }
+                }
+            }
+        })
+
+        return res.status(200).json({
+            "success": true,
+            "data": bookings,
+            "error": null
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            data: null,
+            error: "INTERNAL_SERVER_ERROR",
+        });
+    }
+}
