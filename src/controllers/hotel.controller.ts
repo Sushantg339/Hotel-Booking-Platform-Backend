@@ -272,3 +272,78 @@ export const getHotelsController: RequestHandler = async(req , res)=>{
         })
     }
 }
+
+export const getHotelDetailsController: RequestHandler = async(req , res)=>{
+    try {
+        const hotelId = req.params.hotelId
+        const userId = req.userId
+
+        const user = await prisma.user.findUnique({where : {id: String(userId)}})
+
+        if(!user){
+            return res.status(401).json({
+                "success": false,
+                "data": null,
+                "error": "UNAUTHORIZED"
+            })
+        }
+
+        const hotel = await prisma.hotel.findUnique({
+            where : {
+                id: String(hotelId)
+            },
+            select : {
+                id: true,
+                ownerId: true,
+                name: true,
+                description: true,
+                city: true,
+                country: true,
+                amenities: true,
+                rating: true,
+                totalReviews: true,
+                rooms : {
+                    select : {
+                        id: true,
+                        roomNumber: true,
+                        roomType: true,
+                        pricePerNight: true,
+                        maxOccupancy: true
+
+                    }
+                }
+            }
+        })
+
+        if(!hotel){
+            return res.status(404).json({
+                "success": false,
+                "data": null,
+                "error": "HOTEL_NOT_FOUND"
+            })
+        }
+
+        return res.status(200).json({
+            "success": true,
+            "data": {
+                "id": hotel.id,
+                "ownerId": hotel.ownerId,
+                "name": hotel.name,
+                "description": hotel.description,
+                "city": hotel.city,
+                "country": hotel.country,
+                "amenities": hotel.amenities,
+                "rating": Number(hotel.rating),
+                "totalReviews": Number(hotel.totalReviews),
+                "rooms": hotel.rooms
+            },
+            "error": null
+        })
+    } catch (error) {
+        return res.status(500).json({
+            "success": false,
+            "data": null,
+            "error": "INTERNAL_SERVER_ERROR"
+        })
+    }
+}
