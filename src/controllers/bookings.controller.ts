@@ -220,3 +220,89 @@ export const getMyBookingController: RequestHandler = async(req , res)=>{
         });
     }
 }
+
+
+export const cancelBookingController: RequestHandler = async (req , res)=>{
+    try {
+        const userId = String(req.userId)
+
+        const user = await prisma.user.findUnique({
+            where : {id: userId}
+        })
+
+        if(!user){
+            return res.status(401).json({
+                "success": false,
+                "data": null,
+                "error": "UNAUTHORIZED"
+            })
+        }
+
+        const bookingId = String(req.params.bookingId)
+        const booking = await prisma.booking.findUnique({
+            where : {id: bookingId}
+        })
+
+        if(!booking){
+            return res.status(404).json({
+                "success": false,
+                "data": null,
+                "error": "BOOKING_NOT_FOUND"
+            })
+        }
+
+        if(booking.status === 'cancelled'){
+            return res.status(400).json({
+                "success": false,
+                "data": null,
+                "error": "ALREADY_CANCELLED"
+            })
+        }
+
+        if(userId !== booking.userId){
+            return res.status(403).json({
+                "success": false,
+                "data": null,
+                "error": "FORBIDDEN"
+            })
+        }
+
+        const currentDateTime = new Date();
+        const msIn24Hours = 24 * 60 * 60 * 1000;
+
+        if (((booking.checkInDate.getTime() - currentDateTime.getTime()) < msIn24Hours) || currentDateTime > booking.checkOutDate) {
+            return res.status(400).json({
+                "success": false,
+                "data": null,
+                "error": "CANCELLATION_DEADLINE_PASSED"
+            })
+        }
+
+        const updatedBooking = await prisma.booking.update({
+            where: {
+                id: booking.id
+            },
+            data : {
+                status: 'cancelled',
+                cancelledAt: new Date()
+            }
+        })
+
+        return res.status(200).json({
+            "success": true,
+            "data": {
+                "id": updatedBooking.id,
+                "status": updatedBooking.status,
+                "cancelledAt": updatedBooking.cancelledAt
+            },
+            "error": null
+        })
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            data: null,
+            error: "INTERNAL_SERVER_ERROR",
+        });
+    }
+}
